@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kanu Earnings Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Arial Narrow', sans-serif; margin: 20px; }
+    h1 {
+  color: #2A52BE;
+  font-size: 2em;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+    .charts-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .chart-container {
+      flex: 1;
+      max-width: 48%;
+    }
+    
+    .filters { display: flex; flex-wrap: wrap; gap: 50px; margin-bottom: 40px; }
+    .filter-group { display: flex; flex-direction: column; }
+    table { width: auto; border-collapse: collapse; margin-top: 5px; margin-bottom: 40px }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #d5e3e8; }
+    .totals { margin-top: 5px; }
+    .chart-container { width: 50%; margin-top: 40px; overflow-x:auto; }
+    .negative { color: red; }
+    .totals-header { font-weight: bold; margin-top: 5px; margin-bottom: 5px; color: blue }
+    .table-header {font-weight: bold; margin-top: 5px; margin-bottom: 5px; color: green; font:arial narrow}
+  </style>
+</head>
+<body>
+
+  <h1>Kanu Earnings Dashboard</h1>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label for="monthFilter">Month-Year:</label>
+      <select id="monthFilter">
+        <option value="ALL">ALL</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="searchInput">Search Item or Category:</label>
+      <input type="text" id="searchInput" placeholder="Search...">
+    </div>
+
+    <div class="filter-group">
+      <label>Category:</label>
+      <div id="categoryFilters">
+        <label><input type="radio" name="category" value="ALL" checked> ALL</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="totals" id="totalsDisplay"></div>
+
+ <div class="charts-container">
+    <div class="chart-container">
+      <canvas id="patientCountChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <canvas id="earningsChart"></canvas>
+    </div>
+  </div>
+  
+  <div class="table-header">Logbook</div>
+  
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Clinic</th>
+        <th>Type</th>
+        <th>Count</th>
+        <th>Price</th>
+        <th>Earned</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  
+  <script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSmajYkga40XsAJNrKvXEFRh8TNCG_-ojL67wytOlvLJqZJdYrquS4IxikIQi84T95ftbq48sell78r/pub?gid=1192759857&single=true&output=csv";
+
+    let rawData = [];
+    let filteredData = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchData();
+      document.getElementById('monthFilter').addEventListener('change', applyFilters);
+      document.getElementById('searchInput').addEventListener('input', applyFilters);
+      document.getElementById('categoryFilters').addEventListener('change', applyFilters);
+    });
+
+    async function fetchData() {
+      try {
+        const response = await fetch(csvUrl);
+        const data = await response.text();
+        parseCSV(data);
+        populateFilters();
+        applyFilters();
+        renderCharts();
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    }
+
+    function parseCSV(data) {
+      const lines = data.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+
+      rawData = lines.slice(1).map(line => {
+        const values = line.split(',');
+        const entry = {};
+        headers.forEach((header, index) => {
+          entry[header] = values[index] ? values[index].trim() : '';
+        });
+        return entry;
+      });
+    }
+
+    function populateFilters() {
+      const monthFilter = document.getElementById('monthFilter');
+      const categoryFilters = document.getElementById('categoryFilters');
+
+      const months = new Set();
+      const categories = new Set();
+
+      rawData.forEach(row => {
+        months.add(row['Month Year'] || row['Month-Year']);
+        categories.add(row['Category']);
+      });
+
+      months.forEach(month => {
+        const option = document.createElement('option');
+        option.value = month;
+        option.textContent = month;
+        monthFilter.appendChild(option);
+      });
+
+      categories.forEach(category => {
+        const label = document.createElement('label');
+        label.innerHTML = `<input type="radio" name="category" value="${category}"> ${category}`;
+        categoryFilters.appendChild(label);
+      });
+    }
+
+    function applyFilters() {
+      const monthValue = document.getElementById('monthFilter').value;
+      const searchValue = document.getElementById('searchInput').value.toLowerCase();
+      const categoryRadios = document.getElementsByName('category');
+      let selectedCategory = 'ALL';
+      categoryRadios.forEach(radio => {
+        if (radio.checked) selectedCategory = radio.value;
+      });
+
+      filteredData = rawData.filter(row => {
+        const monthKey = row['Month Year'] ? 'Month Year' : 'Month-Year';
+        const matchesMonth = monthValue === 'ALL' || row[monthKey] === monthValue;
+        const matchesSearch = (row['Item Name'] || '').toLowerCase().includes(searchValue) || (row['Category'] || '').toLowerCase().includes(searchValue);
+        const matchesCategory = selectedCategory === 'ALL' || row['Category'] === selectedCategory;
+        return matchesMonth && matchesSearch && matchesCategory;
+      });
+
+      updateTable();
+      updateTotals();
+    }
+
+    function updateTable() {
+      const tbody = document.querySelector('#dataTable tbody');
+      tbody.innerHTML = '';
+      filteredData.forEach(row => {
+        const perPatientTotal = parseFloat(row['Per patient total']) || 0;
+
+        let categoryColor = '';
+        if (row['Category'] === 'The Clinic') {
+          categoryColor = '#FFBF65';
+        } else if (row['Category'] === 'Aqua Physio') {
+          categoryColor = '#BDD7BF';
+        }
+
+        const rowHTML = `
+          <td>${row['Date Convert']}</td>
+          <td style="background-color: ${categoryColor}">${row['Category']}</td>
+          <td>${row['Item Name']}</td>
+          <td>${row['Quantity']}</td>
+          <td>${formatCurrency(row['price'])}</td>
+          <td class="${perPatientTotal < 0 ? 'negative' : ''}">${formatCurrency(perPatientTotal)}</td>
+        `;
+        const tr = document.createElement('tr');
+        tr.innerHTML = rowHTML;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateTotals() {
+      const totalDisplay = document.getElementById('totalsDisplay');
+      let grossTotal = 0;
+      let categoryTotals = {};
+      let itemTotals = {};
+
+      filteredData.forEach(row => {
+        const rawValue = row['Per patient total'] || '0';
+        const numericValue = parseFloat(rawValue) || 0;
+        grossTotal += numericValue;
+
+        const cat = row['Category'];
+        const item = row['Item Name'];
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + numericValue;
+        itemTotals[item] = (itemTotals[item] || 0) + numericValue;
+      });
+
+      const sortedCategories = Object.keys(categoryTotals).sort();
+      const sortedItems = Object.keys(itemTotals).sort();
+
+      totalDisplay.innerHTML = `
+        <div class="totals-header">Earnings per Category</div>
+        <table>
+          <thead>
+            <tr><th>Gross Total</th>${sortedCategories.map(cat => `<th>${cat}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            <tr><td>${formatCurrency(grossTotal)}</td>${sortedCategories.map(cat => `<td>${formatCurrency(categoryTotals[cat])}</td>`).join('')}</tr>
+          </tbody>
+        </table>
+
+        <div class="totals-header">Earnings per Clinic Item</div>
+        <table>
+          <thead>
+            <tr><th>Gross Total</th>${sortedItems.map(item => `<th>${item}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            <tr><td>${formatCurrency(grossTotal)}</td>${sortedItems.map(item => `<td>${formatCurrency(itemTotals[item])}</td>`).join('')}</tr>
+          </tbody>
+        </table>
+      `;
+    }
+
+    function formatCurrency(value) {
+      const number = parseFloat(value);
+      return isNaN(number) ? 'SGD 0.00' : `SGD ${number.toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+function getColor(index) {
+  const colors = [
+    '#3366CC', '#DC3912', '#FF9900', '#109618', '#990099',
+    '#3B3EAC', '#0099C6', '#DD4477', '#66AA00', '#B82E2E',
+    '#316395', '#994499', '#22AA99', '#AAAA11', '#6633CC',
+    '#E67300', '#8B0707', '#651067', '#329262', '#5574A6'
+  ];
+  return colors[index % colors.length];
+}
+
+function renderCharts() {
+  const monthlyItemCount = {};
+  const monthlyCategoryEarnings = {};
+  const allMonths = new Set();
+
+   
+  rawData.forEach(row => {
+    const month = row['Month Year'] || row['Month-Year'];
+    const item = row['Item Name'];
+    const category = row['Category'];
+    const value = parseFloat(row['Per patient total']) || 0;
+
+    allMonths.add(month);
+
+    if (!monthlyItemCount[month]) monthlyItemCount[month] = {};
+    if (!monthlyItemCount[month][item]) monthlyItemCount[month][item] = 0;
+    monthlyItemCount[month][item] += 1;
+
+    if (!monthlyCategoryEarnings[month]) monthlyCategoryEarnings[month] = {};
+    if (!monthlyCategoryEarnings[month][category]) monthlyCategoryEarnings[month][category] = 0;
+    monthlyCategoryEarnings[month][category] += value;
+  });
+
+  const sortedMonths = Array.from(allMonths).sort();
+  const itemSet = new Set();
+  const categorySet = new Set();
+
+  sortedMonths.forEach(month => {
+    Object.keys(monthlyItemCount[month] || {}).forEach(i => itemSet.add(i));
+    Object.keys(monthlyCategoryEarnings[month] || {}).forEach(c => categorySet.add(c));
+  });
+
+  const itemLabels = Array.from(itemSet);
+  const categoryLabels = Array.from(categorySet);
+
+  const patientCountData = {
+    labels: sortedMonths,
+    datasets: itemLabels.map((item, i) => ({
+      label: item,
+      data: sortedMonths.map(month => (monthlyItemCount[month] && monthlyItemCount[month][item]) || 0),
+      backgroundColor: getColor(i),
+      categorypercentage: 0.5,
+      barpercentage: 0.5
+    }))
+  };
+
+ const ctxPatientCount = document.getElementById('patientCountChart').getContext('2d');
+  new Chart(ctxPatientCount, {
+    type: 'bar',
+    data: patientCountData,
+    options: {
+      responsive: true,
+      plugins: {
+  legend: {
+    display: true,
+    labels: {
+      font: {
+        size: 10
+      },
+      boxWidth: 10,
+      boxHeight: 10
+    }
+  },
+        title: { display: true, text: 'Patient Count per Item by Month' }
+      },
+      scales: {
+        x: { stacked: false },
+        y: { stacked: false }
+      }
+    }
+  });
+
+  const earningsData = {
+    labels: sortedMonths,
+    datasets: categoryLabels.map((cat, i) => ({
+      label: cat,
+      data: sortedMonths.map(month => (monthlyCategoryEarnings[month] && monthlyCategoryEarnings[month][cat]) || 0),
+      backgroundColor: getColor(i),
+      categoryPercentage: 0.5,
+      barPercentage: 0.5
+    }))
+  };
+
+  const ctxEarnings = document.getElementById('earningsChart').getContext('2d');
+  new Chart(ctxEarnings, {
+    type: 'bar',
+    data: earningsData,
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            font: {
+              size: 10
+            },
+            boxWidth: 10,
+            boxHeight: 10
+          }
+        },
+        title: { display: true, text: 'Monthly Earnings per Category' }
+      },
+      scales: {
+        x: { stacked: false },
+        y: {
+          stacked: false,
+          ticks: {
+            callback: function(value) {
+              return 'SGD ' + value.toLocaleString('en-SG', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              });
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+  </script>
+
+</body>
+</html>
