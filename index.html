@@ -29,7 +29,7 @@
       font-size: 2em;
       font-weight: bold;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-      margin-bottom: 20px;
+      margin-bottom: off;
     }
 
     .dashboard-container {
@@ -69,6 +69,14 @@
       flex-wrap: wrap;
       gap: 10px;
     }
+    
+        .divider {
+  height: 2px;
+  background-color: #ccc;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin: 40px 0;
+}
+  
     
     .totals {
       margin-bottom: 30px;
@@ -136,13 +144,31 @@
         flex-direction: column;
         gap: 15px;
       }
+      
+      .table-responsive {
+  overflow-x: auto;
+  margin-bottom: 15px;
+}
+
+      
+@media (max-width: 768px) {
+  table th, table td {
+    padding: 6px 4px;
+    font-size: 0.9em;
+  }
+}
     }
   </style>
 </head>
 <body>
-  <div class="dashboard-container">
-    <h1>Kanu Earnings Dashboard</h1>
+  <div class="dashboard-container">   
+    <h1>
+       Earnings Dashboard 
+    </h1>
+    
 
+      <div class="divider"></div>
+    
     <div class="filters">
       <div class="filter-group">
         <label for="monthFilter">Month-Year:</label>
@@ -166,6 +192,9 @@
 
     <div class="totals" id="totalsDisplay"></div>
 
+    <div class="divider"></div>
+
+    
     <div class="charts-container">
       <div class="chart-container">
         <canvas id="patientCountChart"></canvas>
@@ -174,6 +203,9 @@
         <canvas id="earningsChart"></canvas>
       </div>
     </div>
+    
+    <div class="divider"></div>
+
     
     <div class="table-header">Logbook</div>
     
@@ -394,40 +426,82 @@
   const sortedCategories = Object.keys(categoryTotals).sort();
   const sortedGroups = Object.keys(groupTotals).sort();
 
-  // Generate HTML for totals
-  DOM.totalsDisplay.innerHTML = `
+  // Generate HTML for categories table
+  const categoriesTableHTML = `
     <div class="totals-header">Earnings per Category</div>
-    <table>
-      <thead>
-        <tr>
-          <th>Gross Total</th>
-          ${sortedCategories.map(cat => `<th>${cat}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>${formatCurrency(grossTotal)}</td>
-          ${sortedCategories.map(cat => `<td>${formatCurrency(categoryTotals[cat])}</td>`).join('')}
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="totals-header">Earnings per Clinic Item (Grouped)</div>
-    <table>
-      <thead>
-        <tr>
-          <th>Gross Total</th>
-          ${sortedGroups.map(group => `<th>${group}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>${formatCurrency(grossTotal)}</td>
-          ${sortedGroups.map(group => `<td>${formatCurrency(groupTotals[group])}</td>`).join('')}
-        </tr>
-      </tbody>
-    </table>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Gross Total</th>
+            ${sortedCategories.map(cat => `<th>${cat}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${formatCurrency(grossTotal)}</td>
+            ${sortedCategories.map(cat => `<td>${formatCurrency(categoryTotals[cat])}</td>`).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </div>
   `;
+
+  // Generate HTML for groups table
+  // For many groups, use a vertical layout that's more mobile-friendly
+  let groupsTableHTML = `
+    <div class="totals-header">Earnings per Clinic Item (Grouped)</div>
+    <div class="table-responsive">
+  `;
+  
+  if (sortedGroups.length > 8) {
+    // Vertical layout for many groups (better for mobile)
+    groupsTableHTML += `
+      <table>
+        <thead>
+          <tr>
+            <th>Item Group</th>
+            <th>Earnings</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="font-weight: bold;">
+            <td>Gross Total</td>
+            <td>${formatCurrency(grossTotal)}</td>
+          </tr>
+          ${sortedGroups.map(group => `
+            <tr>
+              <td>${group}</td>
+              <td>${formatCurrency(groupTotals[group])}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } else {
+    // Horizontal layout for fewer groups
+    groupsTableHTML += `
+      <table>
+        <thead>
+          <tr>
+            <th>Gross Total</th>
+            ${sortedGroups.map(group => `<th>${group}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${formatCurrency(grossTotal)}</td>
+            ${sortedGroups.map(group => `<td>${formatCurrency(groupTotals[group])}</td>`).join('')}
+          </tr>
+        </tbody>
+      </table>
+    `;
+  }
+  
+  groupsTableHTML += `</div>`;
+  
+  // Update the DOM
+  DOM.totalsDisplay.innerHTML = categoriesTableHTML + groupsTableHTML;
 }
     
     function formatCurrency(value) {
