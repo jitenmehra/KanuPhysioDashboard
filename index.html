@@ -177,19 +177,19 @@
     
     <div class="filters">
       <div class="filter-group">
-        <label for="monthFilter">Month-Year:</label>
+        <label for="monthFilter">Time Period</label>
         <select id="monthFilter">
           <option value="ALL">ALL</option>
         </select>
       </div>
 
       <div class="filter-group">
-        <label for="searchInput">Search Item or Category:</label>
+        <label for="searchInput">Search Clinics or Treatments</label>
         <input type="text" id="searchInput" placeholder="Search...">
       </div>
 
       <div class="filter-group">
-        <label>Category:</label>
+        <label>Filter by Clinic</label>
         <div id="categoryFilters" class="radio-group">
           <label><input type="radio" name="category" value="ALL" checked> ALL</label>
         </div>
@@ -220,9 +220,9 @@
         <tr>
           <th>Date</th>
           <th>Clinic</th>
-          <th>Type</th>
+          <th>Branch</th>
           <th>Count</th>
-          <th>Price</th>
+          <th>Rate</th>
           <th>Earned</th>
         </tr>
       </thead>
@@ -436,7 +436,7 @@
 
   // Generate HTML for categories table
   const categoriesTableHTML = `
-    <div class="totals-header">Earnings per Category</div>
+    <div class="totals-header">Clinic Summary</div>
     <div class="table-responsive">
       <table>
         <thead>
@@ -458,7 +458,7 @@
   // Generate HTML for groups table
   // For many groups, use a vertical layout that's more mobile-friendly
   let groupsTableHTML = `
-    <div class="totals-header">Earnings per Clinic Item (Grouped)</div>
+    <div class="totals-header">Branch Summary</div>
     <div class="table-responsive">
   `;
   
@@ -626,7 +626,7 @@ window.addEventListener('resize', debounce(() => {
             },
             title: { 
               display: true, 
-              text: 'Patient Count per Item by Month', 
+              text: 'Workload by Clinic', 
               color: '#2a52be', 
               font: { size: 14 } 
             },
@@ -687,7 +687,7 @@ window.addEventListener('resize', debounce(() => {
             },
             title: { 
               display: true, 
-              text: 'Monthly Earnings per Category', 
+              text: 'Monthly Earning Spread', 
               color: '#2a52be', 
               font: { size: 14 } 
             },
