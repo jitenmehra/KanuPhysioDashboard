@@ -179,7 +179,7 @@
 <body>
   <div class="dashboard-container">   
     <h1>
-       Earnings Dashboard 
+       REVENUE Dashboard 
     </h1>
     
 
@@ -254,15 +254,10 @@
     const CONFIG = {
       csvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSmajYkga40XsAJNrKvXEFRh8TNCG_-ojL67wytOlvLJqZJdYrquS4IxikIQi84T95ftbq48sell78r/pub?gid=1192759857&single=true&output=csv",
       categoryColors: {
-        'The Clinic': '#FFBF65',
-        'Aqua Physio': '#BDD7BF'
+        'The Clinic': "#ff8c00",
+        'Aqua Physio': "#4e8aff"
       },
-      chartColors: [
-        '#3366CC', '#DC3912', '#FF9900', '#109618', '#990099',
-        '#3B3EAC', '#0099C6', '#DD4477', '#66AA00', '#B82E2E',
-        '#316395', '#994499', '#22AA99', '#AAAA11', '#6633CC',
-        '#E67300', '#8B0707', '#651067', '#329262', '#5574A6'
-      ],
+      
       labelSettings: {
         font: {
           family: 'Arial Narrow',
@@ -533,6 +528,15 @@
   // Update the DOM
   DOM.totalsDisplay.innerHTML = categoriesTableHTML + groupsTableHTML;
 }
+ 
+    function formatTimeFilterLabel(value) {
+  if (value === 'ALL') return 'ALL TIME';
+  const [year, month] = value.split('-');
+  const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+                      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const monthIndex = parseInt(month, 10) - 1;
+  return `${monthNames[monthIndex]} ${year}`;
+}    
     
     function formatCurrency(value) {
       const number = parseFloat(value);
@@ -570,6 +574,8 @@
   renderCharts();
 }
 
+    
+    
     
     function adjustChartContainerHeights() {
   const chartContainers = document.querySelectorAll('.chart-container');
@@ -686,13 +692,63 @@ function prepareDayOfWeekData() {
   };
 }
     
+    // Global color cache
+const colorCache = {
+  items: {},       // Cache for items (up to 10 colors)
+  categories: {},  // Cache for categories (up to 4 colors)
+  clinics: {}      // Cache for clinics (up to 4 colors, same as categories)
+};
+
+// Define the color arrays for each category type
+const colorLimits = {
+  items: 10,       // Up to 10 colors for items
+  categories: 4,    // Up to 4 colors for categories
+  clinics: 4        // Up to 4 colors for clinics (same as categories)
+};
+
+// Define the colors to be used
+const predefinedColors = [
+  "#4d99ff", "#4d6cff", "#ff981b", "#ff8c01", "#ffa334", "#e67e00", "#e77e00", "#FF33FF", "#F6FF33", "#33FF9A", // 10 colors for items
+  "#3357FF", "#ff8c00", "#FF5733",  "#33B5FF"  // 4 colors for categories and clinics (reuse colors from items)
+];
+
+// Function to get or assign a color to a specific category (items, categories, clinics)
+function getCategoryColor(category, type) {
+  const categoryCache = colorCache[type]; // Select the appropriate cache (items, categories, clinics)
+  
+  // If color already assigned, return it
+  if (categoryCache[category]) {
+    return categoryCache[category];
+  }
+
+let colorIndex;
+
+  // Assign colors differently for items, categories, and clinics
+  if (type === 'items') {
+    // For items, use the first 10 colors
+    colorIndex = Object.keys(categoryCache).length % colorLimits.items;
+    console.log(`Assigned color index for items: ${colorIndex}`);
+  } else if (type === 'categories' || type === 'clinics') {
+    // For categories and clinics, use the remaining colors starting from index 10
+    colorIndex = (Object.keys(categoryCache).length % colorLimits.categories) + colorLimits.items; // Start from index 10
+    console.log(`Assigned color index for categories/clinics: ${colorIndex}`);
+  }
+
+  const color = predefinedColors[colorIndex]; // Get the color from predefined colors
+  
+  categoryCache[category] = color;  // Store the color for reuse
+  return color;
+}
+
+    
+    
     function renderPatientCountChart(data) {
       const patientCountData = {
         labels: data.months,
         datasets: data.items.map((item, i) => ({
           label: item,
           data: data.months.map(month => (data.itemCounts[month] && data.itemCounts[month][item]) || 0),
-          backgroundColor: CONFIG.chartColors[i % CONFIG.chartColors.length],
+          backgroundColor: getCategoryColor(item, 'items'),
           categoryPercentage: 0.8,
           barPercentage: 0.9
         }))
@@ -737,7 +793,7 @@ function prepareDayOfWeekData() {
             },
             title: { 
               display: true, 
-              text: 'Workload by Clinic', 
+              text: 'Workload by Clinic      |     ALL TIME', 
               color: '#2a52be', 
               font: { size: 14 } 
             },
@@ -807,7 +863,7 @@ function prepareDayOfWeekData() {
 
             ctx.save();
             ctx.font = 'bold 11px sans-serif';
-            ctx.fillStyle = '#2a52be';
+            ctx.fillStyle = '#ff0000';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
             ctx.fillText(totalLabel, xCenter, yTop - 4);
@@ -825,7 +881,7 @@ function prepareDayOfWeekData() {
         datasets: data.categories.map((cat, i) => ({
           label: cat,
           data: data.months.map(month => (data.categoryEarnings[month] && data.categoryEarnings[month][cat]) || 0),
-          backgroundColor: CONFIG.chartColors[i % CONFIG.chartColors.length],
+          backgroundColor: getCategoryColor(cat, 'categories'),
           categoryPercentage: 0.8,
           barPercentage: 0.9
         }))
@@ -859,7 +915,7 @@ function prepareDayOfWeekData() {
             },
             title: { 
               display: true, 
-              text: 'Monthly Earning Spread', 
+              text: 'Monthly Revenue      |     ALL TIME', 
               color: '#2a52be', 
               font: { size: 14 },
               padding: 
@@ -874,7 +930,7 @@ function prepareDayOfWeekData() {
               },
               anchor: 'center',
               align: 'center',
-              rotation: -90,
+              rotation: 0,
               color: '#fff',
               font: { size: 10 },
               formatter: function(value) {
@@ -936,7 +992,7 @@ function prepareDayOfWeekData() {
 
             ctx.save();
             ctx.font = 'bold 11px sans-serif';
-            ctx.fillStyle = '#2a52be';
+            ctx.fillStyle = '#ff0000';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
             ctx.fillText(
@@ -956,8 +1012,7 @@ function prepareDayOfWeekData() {
     }
     
     
- function renderWorkloadByDayChart(data) {
-  // Prepare data for the chart
+function renderWorkloadByDayChart(data) {
   const workloadData = {
     labels: data.days,
     datasets: data.items.map((item, i) => ({
@@ -965,13 +1020,12 @@ function prepareDayOfWeekData() {
       data: data.days.map(day => {
         return (data.workloadByDay[day] && data.workloadByDay[day][item]) || 0;
       }),
-      backgroundColor: CONFIG.chartColors[i % CONFIG.chartColors.length],
+      backgroundColor: getCategoryColor(item, 'items'),
       categoryPercentage: 0.8,
       barPercentage: 0.9
     }))
   };
 
-  // Render the chart
   STATE.charts.workloadByDay = new Chart(DOM.workloadByDayChart, {
     type: 'bar',
     data: workloadData,
@@ -980,7 +1034,7 @@ function prepareDayOfWeekData() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true,
+          display: false,
           position: 'top',
           labels: {
             font: { size: 11 },
@@ -990,14 +1044,17 @@ function prepareDayOfWeekData() {
         },
         title: {
           display: true,
-          text: 'Workload by Days',
+          text: 'Workload by Days      |     '  + formatTimeFilterLabel(DOM.monthFilter.value),
           color: '#2a52be',
           font: { size: 14 },
-          padding: 10
+          padding: {
+            top: 10,
+            bottom: 30
+          }
         },
         datalabels: {
           display: function(context) {
-            return context.dataset.data[context.dataIndex] > 0;
+            return context.dataset.data[context.dataIndex] > 2;
           },
           anchor: 'center',
           align: 'center',
@@ -1009,33 +1066,79 @@ function prepareDayOfWeekData() {
         }
       },
       scales: {
-        x: { 
+        x: {
           stacked: true,
           ticks: { font: { size: 10 } }
         },
         y: {
           stacked: true,
+          grace: '10%',
           beginAtZero: true
+  }
+      }
+    },
+    plugins: [
+      ChartDataLabels,
+      {
+        id: 'totalLabels',
+        afterDatasetsDraw(chart) {
+          const { ctx, data, scales: { x, y } } = chart;
+
+          data.labels.forEach((label, index) => {
+            let ptTotal = 0;
+            let hTotal = 0;
+
+            data.datasets.forEach(ds => {
+              const val = ds.data[index] || 0;
+              if (ds.label.toLowerCase().startsWith('aqua')) {
+                hTotal += val;
+              } else {
+                ptTotal += val;
+              }
+            });
+
+            const total = `${ptTotal}pt${hTotal > 0 ? `, ${hTotal}h` : ''}`;
+
+            const xPos = x.getPixelForValue(index);
+            const stackedTotal = ptTotal + hTotal;
+            const yPos = y.getPixelForValue(stackedTotal);
+
+            ctx.save();
+          ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = '#ff0000';
+            ctx.textAlign = 'center';
+            ctx.fillText(total, xPos, yPos - 6);
+            ctx.restore();
+          });
         }
       }
-    }
+    ]
   });
 }
+
+
 
 function renderEarningsByDayChart(data) {
   // Prepare data for the chart
   const earningsData = {
     labels: data.days,
-    datasets: data.clinics.map((clinic, i) => ({
+    datasets: data.clinics.map(clinic => ({
       label: clinic,
       data: data.days.map(day => {
         return (data.earningsByDay[day] && data.earningsByDay[day][clinic]) || 0;
       }),
-      backgroundColor: CONFIG.chartColors[i % CONFIG.chartColors.length],
+      backgroundColor: getCategoryColor(clinic, 'categories'),
       categoryPercentage: 0.8,
       barPercentage: 0.9
     }))
   };
+
+  // Calculate total earnings per day
+  const totalValues = data.days.map(day => {
+    return data.clinics.reduce((sum, clinic) => {
+      return sum + ((data.earningsByDay[day] && data.earningsByDay[day][clinic]) || 0);
+    }, 0);
+  });
 
   // Render the chart
   STATE.charts.earningsByDay = new Chart(DOM.earningsByDayChart, {
@@ -1046,7 +1149,7 @@ function renderEarningsByDayChart(data) {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true,
+          display: false,
           position: 'top',
           labels: {
             font: { size: 11 },
@@ -1056,21 +1159,25 @@ function renderEarningsByDayChart(data) {
         },
         title: {
           display: true,
-          text: 'Earning by Days',
+          text: 'Revenue by Days      |     '  + formatTimeFilterLabel(DOM.monthFilter.value),
           color: '#2a52be',
           font: { size: 14 },
-          padding: 10
+          padding: {
+            top: 10,
+            bottom: 30
+          }
         },
         datalabels: {
-          display: function(context) {
+          display: function (context) {
             return context.dataset.data[context.dataIndex] > 0;
           },
           anchor: 'center',
           align: 'center',
+          rotation: 0,
           color: '#fff',
           font: { size: 10 },
-          formatter: function(value) {
-            return 'S$ ' + value.toLocaleString('en-SG', {
+          formatter: function (value) {
+            return value.toLocaleString('en-SG', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0
             });
@@ -1078,26 +1185,58 @@ function renderEarningsByDayChart(data) {
         }
       },
       scales: {
-        x: { 
+        x: {
           stacked: true,
-          ticks: { font: { size: 10 } }
+          ticks: {
+            font: { size: 10 }
+          }
         },
         y: {
           stacked: true,
           beginAtZero: true,
           ticks: {
-            callback: function(value) {
-              return 'S$ ' + value.toLocaleString('en-SG', { 
-                minimumFractionDigits: 0, 
-                maximumFractionDigits: 0 
+            callback: function (value) {
+              return 'S$ ' + value.toLocaleString('en-SG', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
               });
             }
           }
         }
       }
-    }
+    },
+    plugins: [
+      ChartDataLabels,
+      {
+        id: 'totalValuePlugin',
+        afterDatasetsDraw(chart) {
+          const { ctx, data, scales: { x, y } } = chart;
+          data.labels.forEach((label, index) => {
+            const total = totalValues[index];
+            const xCenter = x.getPixelForValue(index);
+            const yTop = y.getPixelForValue(total);
+
+            ctx.save();
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = '#ff0000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(
+              'S$' + total.toLocaleString('en-SG', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }),
+              xCenter,
+              yTop - 4
+            );
+            ctx.restore();
+          });
+        }
+      }
+    ]
   });
 }
+
     
     
     // Utility Functions
