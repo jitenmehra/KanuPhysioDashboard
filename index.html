@@ -31,6 +31,11 @@
       text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
       margin-bottom: off;
     }
+    
+    h4 {
+      color: red;
+      
+    }
 
     .dashboard-container {
       max-width: 1200px;
@@ -70,12 +75,12 @@
       gap: 10px;
     }
     
-        .divider {
-  height: 2px;
-  background-color: #ccc;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin: 40px 0;
-}
+    .divider {
+       height: 2px;
+       background-color: #ccc;
+       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+       margin: 40px 0;
+     }
   
     
     .totals {
@@ -142,7 +147,12 @@
        }
     
      @media (max-width: 768px) {
-      .charts-container {
+      
+       select, {
+    height: 30px; /* Match height for both */
+      }
+       
+       .charts-container {
         flex-direction: column;
       }
        
@@ -175,6 +185,7 @@
 
       <div class="divider"></div>
     
+    
     <div class="filters">
       <div class="filter-group">
         <label for="monthFilter">Time Period</label>
@@ -199,7 +210,7 @@
     <div class="totals" id="totalsDisplay"></div>
 
     <div class="divider"></div>
-
+  
     
     <div class="charts-container">
       <div class="chart-container">
@@ -208,6 +219,14 @@
       <div class="chart-container">
         <canvas id="earningsChart"></canvas>
       </div>
+   
+<div class="chart-container">
+    <canvas id="workloadByDayChart"></canvas>
+</div>
+
+<div class="chart-container">
+    <canvas id="earningsByDayChart"></canvas>
+</div>
     </div>
     
     <div class="divider"></div>
@@ -271,7 +290,10 @@
       dataTableBody: document.querySelector('#dataTable tbody'),
       totalsDisplay: document.getElementById('totalsDisplay'),
       patientCountChart: document.getElementById('patientCountChart'),
-      earningsChart: document.getElementById('earningsChart')
+      earningsChart: document.getElementById('earningsChart'),
+      workloadByDayChart: document.getElementById('workloadByDayChart'),
+      earningsByDayChart: document.getElementById('earningsByDayChart')
+
     };
 
     // Initialize
@@ -514,27 +536,40 @@
     
     function formatCurrency(value) {
       const number = parseFloat(value);
-      return isNaN(number) ? 'SGD 0.00' : `SGD ${number.toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return isNaN(number) ? 'S$ 0.00' : `S$ ${number.toLocaleString('en-SG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
 
     function renderCharts() {
       const monthlyData = processDataForCharts();
+      const dayData = prepareDayOfWeekData();
       renderPatientCountChart(monthlyData);
       renderEarningsChart(monthlyData);
+      renderWorkloadByDayChart(dayData);
+      renderEarningsByDayChart(dayData);
     }
     
-    function updateCharts() {
-      
-      adjustChartContainerHeights();
-      
-      if (STATE.charts.patientCount) {
-        STATE.charts.patientCount.destroy();
-      }
-      if (STATE.charts.earnings) {
-        STATE.charts.earnings.destroy();
-      }
-      renderCharts();
-    }
+  function updateCharts() {
+  adjustChartContainerHeights();
+
+  if (STATE.charts.patientCount) {
+    STATE.charts.patientCount.destroy();
+  }
+
+  if (STATE.charts.earnings) {
+    STATE.charts.earnings.destroy();
+  }
+
+  if (STATE.charts.workloadByDay) {
+    STATE.charts.workloadByDay.destroy();
+  }
+
+  if (STATE.charts.earningsByDay) {
+    STATE.charts.earningsByDay.destroy();
+  }
+
+  renderCharts();
+}
+
     
     function adjustChartContainerHeights() {
   const chartContainers = document.querySelectorAll('.chart-container');
@@ -596,6 +631,61 @@ window.addEventListener('resize', debounce(() => {
       };
     }
 
+    // Helper to convert JS Date to 'M', 'T', etc.
+function getDayLabel(dateString) {
+  const dayMap = ['S', 'M', 'T', 'W', 'Th', 'F', 'S'];
+  const date = new Date(dateString);
+  const day = date.getDay();
+  return dayMap[day];
+}
+
+function prepareDayOfWeekData() {
+  const days = ['M', 'T', 'W', 'Th', 'F'];
+  const workloadByDay = {};
+  const earningsByDay = {};
+  const itemsSet = new Set();
+  const clinicsSet = new Set();
+  
+  STATE.filteredData.forEach(row => {
+    // Parse date string to get day of week
+    const dateStr = row['Date Convert'];
+    if (!dateStr) return;
+    
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return; // Skip invalid dates
+    
+    const dayNum = date.getDay();
+    if (dayNum === 0 || dayNum === 6) return; // Skip weekends (0=Sunday, 6=Saturday)
+    
+    const dayLabel = days[dayNum - 1]; // Adjust index (Monday is index 0 in our days array)
+    const item = row['Item Name'];
+    const clinic = row['Category']; // Keep the clinic category for earnings chart
+    const quantity = parseInt(row['Quantity'], 10) || 0;
+    const value = parseFloat(row['Per patient total']) || 0;
+    
+    itemsSet.add(item);
+    clinicsSet.add(clinic);
+    
+    // For workload - track by item (detailed view)
+    if (!workloadByDay[dayLabel]) workloadByDay[dayLabel] = {};
+    if (!workloadByDay[dayLabel][item]) workloadByDay[dayLabel][item] = 0;
+    workloadByDay[dayLabel][item] += quantity;
+    
+    // For earnings - track by clinic (summary view)
+    if (!earningsByDay[dayLabel]) earningsByDay[dayLabel] = {};
+    if (!earningsByDay[dayLabel][clinic]) earningsByDay[dayLabel][clinic] = 0;
+    earningsByDay[dayLabel][clinic] += value;
+  });
+  
+  return { 
+    days, 
+    workloadByDay, 
+    earningsByDay,
+    items: Array.from(itemsSet),
+    clinics: Array.from(clinicsSet)
+  };
+}
+    
     function renderPatientCountChart(data) {
       const patientCountData = {
         labels: data.months,
@@ -608,6 +698,27 @@ window.addEventListener('resize', debounce(() => {
         }))
       };
 
+   
+  const totalFormattedLabels = data.months.map(month => {
+    let patientCount = 0;
+    let hours = 0;
+
+    for (const item of data.items) {
+      const value = (data.itemCounts[month] && data.itemCounts[month][item]) || 0;
+      if (/^aqua/i.test(item)) {
+        hours += value;
+      } else {
+        patientCount += value;
+      }
+    }
+
+    let label = '';
+    if (patientCount > 0) label += `${patientCount}pt`;
+    if (hours > 0) label += `${patientCount > 0 ? ', ' : ''}${hours}h`;
+    return label;
+  });
+      
+      
       STATE.charts.patientCount = new Chart(DOM.patientCountChart, {
         type: 'bar',
         data: patientCountData,
@@ -632,28 +743,79 @@ window.addEventListener('resize', debounce(() => {
             },
             datalabels: {
               display: function(context) {
-                return context.dataset.data[context.dataIndex] > 0;
+                return context.dataset.data[context.dataIndex] > 4;
               },
-              anchor: 'end',
-              align: 'top',
-              offset: 0,
-              color: CONFIG.labelSettings.color,
-              font: CONFIG.labelSettings.font,
+              anchor: 'center',
+              align: 'center',
+              offset: 0 ,
+              color: '#fff', //CONFIG.labelSettings.color,
+              font: { size: 10 }, //CONFIG.labelSettings.font,
               formatter: function(value) {
                 return value;
               }
             }
           },
           scales: {
-            x: { stacked: false },
+            x: { stacked: true,
+               font: {
+      size: 8  // 👈 Change this value to your preferred font size
+    },
+                ticks: {
+      callback: function(value, index) {
+        const rawLabel = this.chart.data.labels[index];
+        if (!rawLabel || !rawLabel.includes('-')) return rawLabel;
+
+        const [year, month] = rawLabel.split('-');
+        const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+                            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const monthAbbr = monthNames[parseInt(month, 10) - 1] || '';
+        const yearShort = year.slice(2);
+        return `${monthAbbr}'${yearShort}`;
+      }
+    }
+               
+               },
             y: { 
-              stacked: false,
+              stacked: true,
               beginAtZero: true,
-              grace: '10%' // Add space at the top for labels
+              grace: '10%', // Add space at the top for labels
+              ticks: {
+            callback: function(value) {
+              return value.toLocaleString(); // Optionally add "Patients: " + value
+                }
+              }
             }
           }
         },
-        plugins: [ChartDataLabels]
+        plugins: [
+      ChartDataLabels,
+      {
+        id: 'totalWorkloadPlugin',
+        afterDatasetsDraw(chart) {
+          const { ctx, data, scales: { x, y } } = chart;
+
+          data.labels.forEach((label, index) => {
+            const totalLabel = totalFormattedLabels[index];
+
+            // Calculate total value to position label correctly
+            const totalValue = chart.data.datasets.reduce((sum, ds) => {
+              return sum + ds.data[index];
+            }, 0);
+
+            const xCenter = x.getPixelForValue(index);
+            const yTop = y.getPixelForValue(totalValue);
+
+            ctx.save();
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = '#2a52be';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(totalLabel, xCenter, yTop - 4);
+            ctx.restore();
+          });
+        }
+      }
+    ]
       });
     }
 
@@ -668,7 +830,14 @@ window.addEventListener('resize', debounce(() => {
           barPercentage: 0.9
         }))
       };
+      
+      const totalValues = data.months.map(month => {
+  return data.categories.reduce((sum, cat) => {
+    return sum + ((data.categoryEarnings[month] && data.categoryEarnings[month][cat]) || 0);
+  }, 0);
+});
 
+    
       STATE.charts.earnings = new Chart(DOM.earningsChart, {
         type: 'bar',
         data: earningsData,
@@ -680,16 +849,24 @@ window.addEventListener('resize', debounce(() => {
               display: true,
               position: 'top',
               labels: {
-                font: { size: 11 },
+                font: 
+                   { size: 11 
+                   },
                 boxWidth: 10,
-                boxHeight: 10
-              }
+                boxHeight: 10,
+                padding: 10
+                       },  
             },
             title: { 
               display: true, 
               text: 'Monthly Earning Spread', 
               color: '#2a52be', 
-              font: { size: 14 } 
+              font: { size: 14 },
+              padding: 
+                  {
+                top: 13,
+               bottom: 27
+                  }
             },
             datalabels: {
               display: function(context) {
@@ -709,24 +886,219 @@ window.addEventListener('resize', debounce(() => {
             }
           },
           scales: {
-            x: { stacked: true },
+            x: { stacked: true,
+               font: {
+      size: 8  // 👈 Change this value to your preferred font size
+    },
+                ticks: {
+      callback: function(value, index) {
+        const rawLabel = this.chart.data.labels[index];
+        if (!rawLabel || !rawLabel.includes('-')) return rawLabel;
+
+        const [year, month] = rawLabel.split('-');
+        const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+                            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const monthAbbr = monthNames[parseInt(month, 10) - 1] || '';
+        const yearShort = year.slice(2);
+        return `${monthAbbr}'${yearShort}`;
+      }
+    }
+               
+               },
             y: {
               stacked: true,
               beginAtZero: true,
+               grace: '10%',
               ticks: {
                 callback: function(value) {
-                  return 'SGD ' + value.toLocaleString('en-SG', {
+                  return 'S$ ' + value.toLocaleString('en-SG', {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 0
                   });
-                }
+                },
+                //stepSize: 500,
               }
             }
           }
         },
-        plugins: [ChartDataLabels]
+     plugins: [
+      ChartDataLabels,
+      {
+        // Custom plugin to render total value on top
+        id: 'totalValuePlugin',
+        afterDatasetsDraw(chart) {
+          const { ctx, data, scales: { x, y } } = chart;
+
+          data.labels.forEach((label, index) => {
+            const total = totalValues[index];
+            const xCenter = x.getPixelForValue(index);
+            const yTop = y.getPixelForValue(total);
+
+            ctx.save();
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = '#2a52be';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(
+              'S$' + total.toLocaleString('en-SG', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              } ),
+              xCenter,
+              yTop - 4
+            );
+            ctx.restore();
+          });
+        }
+      }
+    ]
       });
     }
+    
+    
+ function renderWorkloadByDayChart(data) {
+  // Prepare data for the chart
+  const workloadData = {
+    labels: data.days,
+    datasets: data.items.map((item, i) => ({
+      label: item,
+      data: data.days.map(day => {
+        return (data.workloadByDay[day] && data.workloadByDay[day][item]) || 0;
+      }),
+      backgroundColor: CONFIG.chartColors[i % CONFIG.chartColors.length],
+      categoryPercentage: 0.8,
+      barPercentage: 0.9
+    }))
+  };
+
+  // Render the chart
+  STATE.charts.workloadByDay = new Chart(DOM.workloadByDayChart, {
+    type: 'bar',
+    data: workloadData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: { size: 11 },
+            boxWidth: 10,
+            boxHeight: 10
+          }
+        },
+        title: {
+          display: true,
+          text: 'Workload by Days',
+          color: '#2a52be',
+          font: { size: 14 },
+          padding: 10
+        },
+        datalabels: {
+          display: function(context) {
+            return context.dataset.data[context.dataIndex] > 0;
+          },
+          anchor: 'center',
+          align: 'center',
+          color: '#fff',
+          font: { size: 10 },
+          formatter: function(value) {
+            return value;
+          }
+        }
+      },
+      scales: {
+        x: { 
+          stacked: true,
+          ticks: { font: { size: 10 } }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+function renderEarningsByDayChart(data) {
+  // Prepare data for the chart
+  const earningsData = {
+    labels: data.days,
+    datasets: data.clinics.map((clinic, i) => ({
+      label: clinic,
+      data: data.days.map(day => {
+        return (data.earningsByDay[day] && data.earningsByDay[day][clinic]) || 0;
+      }),
+      backgroundColor: CONFIG.chartColors[i % CONFIG.chartColors.length],
+      categoryPercentage: 0.8,
+      barPercentage: 0.9
+    }))
+  };
+
+  // Render the chart
+  STATE.charts.earningsByDay = new Chart(DOM.earningsByDayChart, {
+    type: 'bar',
+    data: earningsData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: { size: 11 },
+            boxWidth: 10,
+            boxHeight: 10
+          }
+        },
+        title: {
+          display: true,
+          text: 'Earning by Days',
+          color: '#2a52be',
+          font: { size: 14 },
+          padding: 10
+        },
+        datalabels: {
+          display: function(context) {
+            return context.dataset.data[context.dataIndex] > 0;
+          },
+          anchor: 'center',
+          align: 'center',
+          color: '#fff',
+          font: { size: 10 },
+          formatter: function(value) {
+            return 'S$ ' + value.toLocaleString('en-SG', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0
+            });
+          }
+        }
+      },
+      scales: {
+        x: { 
+          stacked: true,
+          ticks: { font: { size: 10 } }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return 'S$ ' + value.toLocaleString('en-SG', { 
+                minimumFractionDigits: 0, 
+                maximumFractionDigits: 0 
+              });
+            }
+          }
+        }
+      }
+    }
+  });
+}
+    
     
     // Utility Functions
     function debounce(func, wait) {
