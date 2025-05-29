@@ -474,7 +474,7 @@ function updateTotals() {
   const clinicGroups = sortedGroups.filter(g => !g.startsWith("Aqua"));
   const monthLabel = formatTimeFilterLabel(DOM.monthFilter.value);
 
-  const baseStyle = "text-align: center; vertical-align: middle;";
+  const baseStyle = "text-align: center; vertical-align: middle; padding: 2px;";
   const blackBorder = "border: 1px solid black;";
   const borderLeft = "border-left: 1px solid black;";
   const borderTop = "border-top: 1px solid black;";
@@ -490,7 +490,7 @@ function updateTotals() {
           <td style="${blackBorder + baseStyle} background: #3357FF; color: white; font-weight: bold;">Aqua Physio</td>
         </tr>
         <tr>
-          <td style="font-weight: bold; ${blackBorder + baseStyle} color: green;">${monthLabel}</td>
+          <td style="font-weight: bold; background: #ffffa3; ${blackBorder + baseStyle} color: green;">${monthLabel}</td>
           ${clinicGroups.map(clinic => `
             <td style="${blackBorder + baseStyle} background: ${itemColors[clinic] || '#ccc'}; color: yellow;">${clinic}</td>
           `).join('')}
@@ -505,7 +505,7 @@ function updateTotals() {
           <td style="${blackBorder + baseStyle}">${formatCurrency(aquaTotal)}</td>
         </tr>
         <tr>
-          <td style="${blackBorder + baseStyle} font-weight: bold;">Gross Total : 
+          <td style="${blackBorder + baseStyle} font-weight: bold; background: #ffffa3;">Gross Total : 
           <span style="color: red; font-weight: bold;">${formatCurrency(grossTotal)}</span>
         </td>
           <td colspan="${clinicGroups.length}" style="${blackBorder + baseStyle} background: #ff8c00; color: white; font-weight: bold;">${formatCurrency(grossTotal - aquaTotal)}</td>
