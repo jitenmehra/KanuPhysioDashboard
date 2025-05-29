@@ -713,51 +713,79 @@ function prepareDayOfWeekData() {
   };
 }
     
-    // Global color cache
+ // Global color cache
 const colorCache = {
-  items: {},       // Cache for items (up to 10 colors)
-  categories: {},  // Cache for categories (up to 4 colors)
-  clinics: {}      // Cache for clinics (up to 4 colors, same as categories)
+  items: {},       // Cache for items (fixed colors or fallback)
+  categories: {},  // Cache for categories (fixed colors or fallback)
+  clinics: {}      // Cache for clinics (fixed colors or fallback)
 };
 
-// Define the color arrays for each category type
+// Define the color limits for fallback (if fixed not defined)
 const colorLimits = {
-  items: 10,       // Up to 10 colors for items
-  categories: 4,    // Up to 4 colors for categories
-  clinics: 4        // Up to 4 colors for clinics (same as categories)
+  items: 10,
+  categories: 4,
+  clinics: 4
 };
 
-// Define the colors to be used
+// Predefined fallback colors (used only if fixed color not found)
 const predefinedColors = [
-  "#4d99ff", "#4d6cff", "#ff981b", "#ff8c01", "#ffa334", "#e67e00", "#e77e00", "#FF33FF", "#F6FF33", "#33FF9A", // 10 colors for items
-  "#3357FF", "#ff8c00", "#FF5733",  "#33B5FF"  // 4 colors for categories and clinics (reuse colors from items)
+  "#4d99ff", "#4d6cff", "#ff981b", "#ff8c01", "#ffa334", "#e67e00", "#e77e00", "#FF33FF", "#F6FF33", "#33FF9A",
+  "#3357FF", "#ff8c00", "#FF5733", "#33B5FF"
 ];
 
-// Function to get or assign a color to a specific category (items, categories, clinics)
+// Fixed color mapping for consistent visual identity
+const fixedColors = {
+  items: {
+    "Aperia - New": "#15b361",         // dark orange
+    "Aperia - Repeat": "#15b361",      // light orange
+    "Aqua Comm - New": "#00d0ff",      // dark blue
+    "Aqua Comm - Repeat": "#00d0ff",   // light blue
+    "Aqua Hrly": "#4994f5",            // Aqua-specific
+    "Campus - New": "#ccae54",
+    "Campus - Repeat": "#ccae54",
+    "Campus Student - New": "#a900b5",
+    "Campus Student - Repeat": "#a900b5",
+    "Marina - New": "#eb4034",
+    "Marina - Repeat": "#eb4034"
+  },
+  categories: {
+    "Aqua Physio": "#3357FF",
+    "The Clinic": "#ff8c00"
+  },
+  clinics: {
+    "Aperia": "#e67e00",
+    "Aqua": "#3357FF",
+    "Campus": "#ff8c01",
+    "Marina": "#ff981b"
+  }
+};
+
+// Function to get or assign a color to a category (items, categories, clinics)
 function getCategoryColor(category, type) {
-  const categoryCache = colorCache[type]; // Select the appropriate cache (items, categories, clinics)
-  
-  // If color already assigned, return it
+  const categoryCache = colorCache[type];
+  const fixedColorMap = fixedColors[type];
+
+  // Return cached color if already assigned
   if (categoryCache[category]) {
     return categoryCache[category];
   }
 
-let colorIndex;
-
-  // Assign colors differently for items, categories, and clinics
-  if (type === 'items') {
-    // For items, use the first 10 colors
-    colorIndex = Object.keys(categoryCache).length % colorLimits.items;
-    console.log(`Assigned color index for items: ${colorIndex}`);
-  } else if (type === 'categories' || type === 'clinics') {
-    // For categories and clinics, use the remaining colors starting from index 10
-    colorIndex = (Object.keys(categoryCache).length % colorLimits.categories) + colorLimits.items; // Start from index 10
-    console.log(`Assigned color index for categories/clinics: ${colorIndex}`);
+  // Use fixed color if defined
+  if (fixedColorMap && fixedColorMap[category]) {
+    categoryCache[category] = fixedColorMap[category];
+    return fixedColorMap[category];
   }
 
-  const color = predefinedColors[colorIndex]; // Get the color from predefined colors
-  
-  categoryCache[category] = color;  // Store the color for reuse
+  // Fallback to predefined color if needed
+  let colorIndex;
+  if (type === 'items') {
+    colorIndex = Object.keys(categoryCache).length % colorLimits.items;
+  } else if (type === 'categories' || type === 'clinics') {
+    colorIndex = (Object.keys(categoryCache).length % colorLimits.categories) + colorLimits.items;
+  }
+
+  const color = predefinedColors[colorIndex];
+  categoryCache[category] = color;
   return color;
 }
 
