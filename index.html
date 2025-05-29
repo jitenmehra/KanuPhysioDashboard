@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kanu Earnings Dashboard</title>
+  <title>Kanu Revenue</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
   <style>
@@ -255,7 +255,7 @@
       csvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSmajYkga40XsAJNrKvXEFRh8TNCG_-ojL67wytOlvLJqZJdYrquS4IxikIQi84T95ftbq48sell78r/pub?gid=1192759857&single=true&output=csv",
       categoryColors: {
         'The Clinic': "#ff8c00",
-        'Aqua Physio': "#4e8aff"
+        'Aqua Physio': "#3357FF"
       },
       
       labelSettings: {
@@ -414,7 +414,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${row['Date Convert']}</td>
-          <td style="background-color: ${categoryColor}">${row['Category']}</td>
+          <td style="color: white; background-color: ${categoryColor}">${row['Category']}</td>
           <td>${row['Item Name']}</td>
           <td>${row['Quantity']}</td>
           <td>${formatCurrency(row['price'])}</td>
@@ -426,109 +426,99 @@
       DOM.dataTableBody.appendChild(fragment);
     }
 
-    function updateTotals() {
-  let grossTotal = 0;
-  const categoryTotals = {};
-  const itemTotals = {};
+function updateTotals() {
+  const formatCurrency = val =>
+    '$' + (val || 0).toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+
+  const formatTimeFilterLabel = val => {
+    if (val === "ALL") return "ALL TIME";
+    const date = new Date(val);
+    const month = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const year = date.getFullYear();
+    return `${month} ${year}`;
+  };
+
+  const itemColors = {
+    "Aperia": "#15b361",
+    "Aqua": "#4994f5",
+    "Campus": "#ccae54",
+    "Marina": "#eb4034"
+  };
+
   const groupTotals = {};
+  const itemTotals = {};
+  let grossTotal = 0;
 
-  // Calculate totals
+    
   STATE.filteredData.forEach(row => {
-    const numericValue = parseFloat(row['Per patient total']) || 0;
-    grossTotal += numericValue;
+    const val = parseFloat(row["Per patient total"]) || 0;
+    const item = row["Item Name"];
+    const firstWord = item.split(" ")[0];
 
-    const cat = row['Category'];
-    const item = row['Item Name'];
-    
-    categoryTotals[cat] = (categoryTotals[cat] || 0) + numericValue;
-    itemTotals[item] = (itemTotals[item] || 0) + numericValue;
-    
-    // Extract first word for grouping
-    const firstWord = item.split(' ')[0];
-    groupTotals[firstWord] = (groupTotals[firstWord] || 0) + numericValue;
+    groupTotals[firstWord] = (groupTotals[firstWord] || 0) + val;
+    itemTotals[item] = (itemTotals[item] || 0) + val;
+    grossTotal += val;
   });
 
-  const sortedCategories = Object.keys(categoryTotals).sort();
   const sortedGroups = Object.keys(groupTotals).sort();
+  let aquaTotal = 0;
+  sortedGroups.forEach(g => {
+    if (g.startsWith("Aqua")) {
+      aquaTotal += groupTotals[g];
+    }
+  });
 
-  // Generate HTML for categories table
-  const categoriesTableHTML = `
-    <div class="totals-header">Clinic Summary</div>
+  const clinicGroups = sortedGroups.filter(g => !g.startsWith("Aqua"));
+  const monthLabel = formatTimeFilterLabel(DOM.monthFilter.value);
+
+  const baseStyle = "text-align: center; vertical-align: middle;";
+  const blackBorder = "border: 1px solid black;";
+  const borderLeft = "border-left: 1px solid black;";
+  const borderTop = "border-top: 1px solid black;";
+  const borderRight = "border-right: 1px solid black;";
+  
+  const tableHTML = `
+    <div class="totals-header" style="text-align: left;">Earning Summary</div>
     <div class="table-responsive">
-      <table>
-        <thead>
-          <tr>
-            <th>Gross Total</th>
-            ${sortedCategories.map(cat => `<th>${cat}</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>${formatCurrency(grossTotal)}</td>
-            ${sortedCategories.map(cat => `<td>${formatCurrency(categoryTotals[cat])}</td>`).join('')}
-          </tr>
-        </tbody>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="border: none;"></td>
+          <td colspan="${clinicGroups.length}" style="${blackBorder + baseStyle} background: #ff8c00; color: white; font-weight: bold;">The Clinic</td>
+          <td style="${blackBorder + baseStyle} background: #3357FF; color: white; font-weight: bold;">Aqua Physio</td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; ${blackBorder + baseStyle} color: green;">${monthLabel}</td>
+          ${clinicGroups.map(clinic => `
+            <td style="${blackBorder + baseStyle} background: ${itemColors[clinic] || '#ccc'}; color: yellow;">${clinic}</td>
+          `).join('')}
+          <td style="${blackBorder + baseStyle} background: ${itemColors["Aqua"]}; color: yellow;">Camden</td>
+        </tr>
+        <tr>
+          <td style="border-left: none; border-bottom: none; ${borderRight + baseStyle}"></td>
+          ${clinicGroups.map(clinic => {
+            const total = groupTotals[clinic] || 0;
+            return `<td style="${blackBorder + baseStyle}">${formatCurrency(total)}</td>`;
+          }).join('')}
+          <td style="${blackBorder + baseStyle}">${formatCurrency(aquaTotal)}</td>
+        </tr>
+        <tr>
+          <td style="${blackBorder + baseStyle} font-weight: bold;">Gross Total : 
+          <span style="color: red; font-weight: bold;">${formatCurrency(grossTotal)}</span>
+        </td>
+          <td colspan="${clinicGroups.length}" style="${blackBorder + baseStyle} background: #ff8c00; color: white; font-weight: bold;">${formatCurrency(grossTotal - aquaTotal)}</td>
+          <td style="${blackBorder + baseStyle} background: #3357FF; color: white; font-weight: bold;">${formatCurrency(aquaTotal)}</td>
+        </tr>
       </table>
     </div>
   `;
 
-  // Generate HTML for groups table
-  // For many groups, use a vertical layout that's more mobile-friendly
-  let groupsTableHTML = `
-    <div class="totals-header">Branch Summary</div>
-    <div class="table-responsive">
-  `;
-  
-  if (sortedGroups.length > 8) {
-    // Vertical layout for many groups (better for mobile)
-    groupsTableHTML += `
-      <table>
-        <thead>
-          <tr>
-            <th>Item Group</th>
-            <th>Earnings</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="font-weight: bold;">
-            <td>Gross Total</td>
-            <td>${formatCurrency(grossTotal)}</td>
-          </tr>
-          ${sortedGroups.map(group => `
-            <tr>
-              <td>${group}</td>
-              <td>${formatCurrency(groupTotals[group])}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-  } else {
-    // Horizontal layout for fewer groups
-    groupsTableHTML += `
-      <table>
-        <thead>
-          <tr>
-            <th>Gross Total</th>
-            ${sortedGroups.map(group => `<th>${group}</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>${formatCurrency(grossTotal)}</td>
-            ${sortedGroups.map(group => `<td>${formatCurrency(groupTotals[group])}</td>`).join('')}
-          </tr>
-        </tbody>
-      </table>
-    `;
-  }
-  
-  groupsTableHTML += `</div>`;
-  
-  // Update the DOM
-  DOM.totalsDisplay.innerHTML = categoriesTableHTML + groupsTableHTML;
+  DOM.totalsDisplay.innerHTML = tableHTML;
 }
- 
+
+
     function formatTimeFilterLabel(value) {
   if (value === 'ALL') return 'ALL TIME';
   const [year, month] = value.split('-');
@@ -753,10 +743,10 @@ const fixedColors = {
     "The Clinic": "#ff8c00"
   },
   clinics: {
-    "Aperia": "#e67e00",
-    "Aqua": "#3357FF",
-    "Campus": "#ff8c01",
-    "Marina": "#ff981b"
+    "Aperia": "#15b361",
+    "Aqua": "#4994f5",
+    "Campus": "#ccae54",
+    "Marina": "#eb4034"
   }
 };
 
