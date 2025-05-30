@@ -379,8 +379,13 @@
       STATE.filteredData = STATE.rawData.filter(row => {
         const monthKey = row['Month Year'] ? 'Month Year' : 'Month-Year';
         const matchesMonth = monthValue === 'ALL' || row[monthKey] === monthValue;
-        const matchesSearch = (row['Item Name'] || '').toLowerCase().includes(searchValue) || 
-                              (row['Category'] || '').toLowerCase().includes(searchValue);
+        const itemName = (row['Item Name'] || '').toLowerCase();
+        const category = (row['Category'] || '').toLowerCase();
+        const matchesSearch = 
+                  searchValue === '' || 
+                  itemName.includes(searchValue) || 
+                  category.includes(searchValue) ||
+                  (searchValue.includes('camden') && category === 'Aqua Physio');
         const matchesCategory = selectedCategory === 'ALL' || row['Category'] === selectedCategory;
         
         return matchesMonth && matchesSearch && matchesCategory;
@@ -390,9 +395,9 @@
       updateTotals();
       updateCharts();
     }
-    
 
-    function updateTable() {
+    
+     function updateTable() {
       // Clear table
       DOM.dataTableBody.innerHTML = '';
       
@@ -426,6 +431,7 @@
       DOM.dataTableBody.appendChild(fragment);
     }
 
+
 function updateTotals() {
   const formatCurrency = val =>
     '$' + (val || 0).toLocaleString('en-US', {
@@ -451,8 +457,10 @@ function updateTotals() {
   const groupTotals = {};
   const itemTotals = {};
   let grossTotal = 0;
+  let aquaTotal = 0;
+  
+  // console.log("Filtered Data:", STATE.filteredData); //
 
-    
   STATE.filteredData.forEach(row => {
     const val = parseFloat(row["Per patient total"]) || 0;
     const item = row["Item Name"];
@@ -464,14 +472,15 @@ function updateTotals() {
   });
 
   const sortedGroups = Object.keys(groupTotals).sort();
-  let aquaTotal = 0;
-  sortedGroups.forEach(g => {
+  const displayedGroups = sortedGroups.filter(g => {
     if (g.startsWith("Aqua")) {
       aquaTotal += groupTotals[g];
+      return false; // exclude Aqua groups from "The Clinic"
     }
+    return groupTotals[g] > 0;
   });
 
-  const clinicGroups = sortedGroups.filter(g => !g.startsWith("Aqua"));
+  const showAqua = aquaTotal > 0;
   const monthLabel = formatTimeFilterLabel(DOM.monthFilter.value);
 
   const baseStyle = "text-align: center; vertical-align: middle; padding: 2px;";
@@ -479,37 +488,42 @@ function updateTotals() {
   const borderLeft = "border-left: 1px solid black;";
   const borderTop = "border-top: 1px solid black;";
   const borderRight = "border-right: 1px solid black;";
-  
+
+  if (grossTotal === 0) {
+    DOM.totalsDisplay.innerHTML = "<div style='text-align:center; padding:1em;'>No data for selected filter.</div>";
+    return;
+  }
+
   const tableHTML = `
     <div class="totals-header" style="text-align: left;">Earning Summary</div>
     <div class="table-responsive">
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
           <td style="border: none;"></td>
-          <td colspan="${clinicGroups.length}" style="${blackBorder + baseStyle} background: #ff8c00; color: white; font-weight: bold;">The Clinic</td>
-          <td style="${blackBorder + baseStyle} background: #3357FF; color: white; font-weight: bold;">Aqua Physio</td>
+          ${displayedGroups.length > 0 ? `<td colspan="${displayedGroups.length}" style="${blackBorder + baseStyle} background: #ff8c00; color: white; font-weight: bold;">The Clinic</td>` : ''}
+          ${showAqua ? `<td style="${blackBorder + baseStyle} background: #3357FF; color: white; font-weight: bold;">Aqua Physio</td>` : ''}
         </tr>
         <tr>
           <td style="font-weight: bold; background: #ffffa3; ${blackBorder + baseStyle} color: green;">${monthLabel}</td>
-          ${clinicGroups.map(clinic => `
+          ${displayedGroups.map(clinic => `
             <td style="${blackBorder + baseStyle} background: ${itemColors[clinic] || '#ccc'}; color: yellow;">${clinic}</td>
           `).join('')}
-          <td style="${blackBorder + baseStyle} background: ${itemColors["Aqua"]}; color: yellow;">Camden</td>
+          ${showAqua ? `<td style="${blackBorder + baseStyle} background: ${itemColors["Aqua"]}; color: yellow;">Camden</td>` : ''}
         </tr>
         <tr>
           <td style="border-left: none; border-bottom: none; ${borderRight + baseStyle}"></td>
-          ${clinicGroups.map(clinic => {
+          ${displayedGroups.map(clinic => {
             const total = groupTotals[clinic] || 0;
             return `<td style="${blackBorder + baseStyle}">${formatCurrency(total)}</td>`;
           }).join('')}
-          <td style="${blackBorder + baseStyle}">${formatCurrency(aquaTotal)}</td>
+          ${showAqua ? `<td style="${blackBorder + baseStyle}">${formatCurrency(aquaTotal)}</td>` : ''}
         </tr>
         <tr>
           <td style="${blackBorder + baseStyle} font-weight: bold; background: #ffffa3;">Gross Total : 
-          <span style="color: red; font-weight: bold;">${formatCurrency(grossTotal)}</span>
-        </td>
-          <td colspan="${clinicGroups.length}" style="${blackBorder + baseStyle} background: #ff8c00; color: white; font-weight: bold;">${formatCurrency(grossTotal - aquaTotal)}</td>
-          <td style="${blackBorder + baseStyle} background: #3357FF; color: white; font-weight: bold;">${formatCurrency(aquaTotal)}</td>
+            <span style="color: red; font-weight: bold;">${formatCurrency(grossTotal)}</span>
+          </td>
+          ${displayedGroups.length > 0 ? `<td colspan="${displayedGroups.length}" style="${blackBorder + baseStyle} background: #ff8c00; color: white; font-weight: bold;">${formatCurrency(grossTotal - aquaTotal)}</td>` : ''}
+          ${showAqua ? `<td style="${blackBorder + baseStyle} background: #3357FF; color: white; font-weight: bold;">${formatCurrency(aquaTotal)}</td>` : ''}
         </tr>
       </table>
     </div>
@@ -593,7 +607,7 @@ function updateTotals() {
 const previousSizes = new Map();
     
 window.addEventListener('resize', debounce(() => {
- hartContainers.forEach((container, index) => {
+ ChartContainers.forEach((container, index) => {
     const width = container.offsetWidth;
     const height = container.offsetHeight;
     const key = `chart${index + 1}`;
