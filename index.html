@@ -385,7 +385,7 @@
                   searchValue === '' || 
                   itemName.includes(searchValue) || 
                   category.includes(searchValue) ||
-                  (searchValue.includes('camden') && category === 'Aqua Physio');
+                  (searchValue.includes('camden') && category === 'aqua physio');
         const matchesCategory = selectedCategory === 'ALL' || row['Category'] === selectedCategory;
         
         return matchesMonth && matchesSearch && matchesCategory;
