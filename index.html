@@ -6,175 +6,307 @@
   <title>Kanu Revenue</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
-  <style>
-    :root {
-      --primary-color: #2A52BE;
-      --secondary-color: #d5e3e8;
-      --clinic-color: #FFBF65;
-      --aqua-color: #BDD7BF;
-      --border-color: #ccc;
-      --negative-color: red;
-      --totals-color: blue;
-      --table-header-color: green;
-    }
-    
-    body { 
-      font-family: 'Arial Narrow', sans-serif; 
-      margin: 20px;
-      line-height: 1.6;
-    }
-    
-    h1 {
-      color: var(--primary-color);
-      font-size: 2em;
-      font-weight: bold;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-      margin-bottom: off;
-    }
-    
-    h4 {
-      color: red;
-      
-    }
+<style>
+  :root {
+    --primary-color: #2A52BE;
+    --secondary-color: #d5e3e8;
+    --clinic-color: #FFBF65;
+    --aqua-color: #BDD7BF;
+    --border-color: #ccc;
+    --negative-color: red;
+    --totals-color: blue;
+    --table-header-color: green;
+    --modal-bg: rgba(0, 0, 0, 0.5);
+  }
 
-    .dashboard-container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+  body { 
+    font-family: 'Arial Narrow', sans-serif; 
+    margin: 20px;
+    line-height: 1.6;
+  }
 
-    .filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-bottom: 30px;
-      padding: 15px;
-      background-color: #f5f5f5;
-      border-radius: 5px;
-    }
-    
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      min-width: 200px;
-    }
-    
-    label {
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
-    
-    select, input {
-      padding: 8px;
-      border: 1px solid var(--border-color);
+  h1 {
+    color: var(--primary-color);
+    font-size: 2em;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    margin-bottom: off;
+  }
+
+  h4 {
+    color: red;
+  }
+
+  .dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+  }
+
+  label {
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+
+  select, input {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+  }
+
+  .radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .divider {
+    height: 2px;
+    background-color: #ccc;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 40px 0;
+  }
+
+  .totals {
+    margin-bottom: 30px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 30px;
+  }
+
+  th, td {
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    text-align: left;
+  }
+
+  th {
+    background-color: var(--secondary-color);
+  }
+
+  .charts-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+
+  .chart-container {
+    flex: 1;
+    min-width: 300px;
+    height: 400px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    transition: height 0.3s ease;
+  }
+
+  .negative {
+    color: var(--negative-color);
+  }
+
+  .totals-header {
+    font-weight: bold;
+    margin: 15px 0 5px;
+    color: var(--totals-color);
+  }
+
+  .table-header {
+    font-weight: bold;
+    margin: 15px 0 5px;
+    color: var(--table-header-color);
+    font-size: 1.2em;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    margin-bottom: 15px;
+  }
+
+  /* =================== Payslip Modal =================== */
+
+  #payslipOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 70vh;
+    background: var(--modal-bg);
+    z-index: 999;
+  }
+
+  #payslipModal {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 50%;
+    max-width: 600px;
+    height: 100%;
+    max-height:calc(80vh);
+    background: #fff;
+    z-index: 1000;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.3);
+    overflow-y: auto;
+    padding: 20px;
+    margin-bottom: 50px;
+    transition: right 0.3s ease-in-out;
+    border-left: 4px solid var(--primary-color);
+    border-radius: 4px 0 0 4px;
+  }
+
+  #payslipModal.show {
+    right: 0;
+  }
+
+  #payslipModal h3 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+  }
+
+  #closePayslipBtn {
+    float: right;
+    font-size: 1.5em;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--negative-color);
+  }
+
+  #payslipModal label {
+    font-weight: bold;
+  }
+
+  #payslipModal input,
+  #payslipModal select {
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    width: 100%;
+  }
+
+  #payslipModal table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: visible;
+    font-size: 12px;
+    margin-top: 15px;
+    margin-bottom:20px;
+    padding-bottom: 1em;
+  }
+
+  #payslipModal th,
+  #payslipModal td {
+    border: 1px solid var(--border-color);
+    padding: 6px;
+  }
+
+  #payslipModal th {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+  }
+
+  #payslipSummary {
+    font-weight: bold;
+    margin-top: 10px;
+    color: var(--totals-color);
+    font-size: 14px;
+  }
+
+  /* =================== Payslip Button =================== */
+  #togglePayslipBtn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  #togglePayslipBtn:hover {
+    background-color: #1d3fa2;
+  }
+ #saveAsImageBtn {
+      background-color: #28a745;
+      color: white;
+      border: none;
       border-radius: 4px;
+      padding: 0.5em 1em;
+      margin-top: 1em;
+      cursor: pointer;
     }
-    
-    .radio-group {
+    #saveAsImageBtn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+  
+  .filter-container {
+      font-size: 12px;
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
     }
-    
-    .divider {
-       height: 2px;
-       background-color: #ccc;
-       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-       margin: 40px 0;
-     }
+    /* Ensure no parent clipping */
+    body, html {
+      overflow: visible !important;
+    }
   
-    
-    .totals {
-      margin-bottom: 30px;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 30px;
-    }
-    
-    th, td {
-      border: 1px solid var(--border-color);
-      padding: 8px;
-      text-align: left;
-    }
-    
-    th {
-      background-color: var(--secondary-color);
-    }
-    
-    .charts-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-    
-    .chart-container {
-      flex: 1;
-      min-width: 300px;
-      height: 400px;
-      padding: 10px;
-      border: 1px solid var(--border-color);
-      border-radius: 5px;
-    }
-    
-    .negative {
-      color: var(--negative-color);
-    }
-    
-    .totals-header {
-      font-weight: bold;
-      margin: 15px 0 5px;
-      color: var(--totals-color);
-    }
-    
-    .table-header {
-      font-weight: bold;
-      margin: 15px 0 5px;
-      color: var(--table-header-color);
-      font-size: 1.2em;
-    }
-      
-      .chart-container {
-        flex: 1;
-        min-width: 300px;
-        height: 400px; /* Default height for desktop */
-        padding: 10px;
-        border: 1px solid var(--border-color);
-        border-radius: 5px;
-        transition: height 0.3s ease; /* Smooth height transition */
-       }
-    
-     @media (max-width: 768px) {
-      
-       select, {
-    height: 30px; /* Match height for both */
-      }
-       
-       .charts-container {
-        flex-direction: column;
-      }
-       
-       .chart-container {
-    height: auto; /* Let height flow naturally */
-    width: 100%;
-    aspect-ratio: 1 / 1; /* 1:1 ratio (square charts) */
+  .disclaimer {
+    font-size: 12px;
+    color: #555;
+    padding: 1em 0; /* Padding above and below */
+    text-align: center;
   }
- 
-      .filters {
-        flex-direction: column;
-        gap: 15px;
-      }
-      
-      .table-responsive {
-  overflow-x: auto;
-  margin-bottom: 15px;
-}
-
-}
+  
+  /* =================== Responsive =================== */
+  @media (max-width: 768px) {
+    .filters {
+      flex-direction: column;
+      gap: 15px;
     }
-  </style>
+
+    .charts-container {
+      flex-direction: column;
+    }
+
+    .chart-container {
+      height: auto;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+    }
+
+    #payslipModal {
+      width: 100%;
+      max-width: none;
+    }
+
+    #payslipModal table {
+      font-size: 11px;
+    }
+  }
+</style>
+
+  
 </head>
 <body>
   <div class="dashboard-container">   
@@ -199,6 +331,37 @@
         <input type="text" id="searchInput" placeholder="Search...">
       </div>
 
+      <!-- Button to toggle the payslip modal -->
+<button id="togglePayslipBtn">Show Payslip</button>
+
+<!-- Payslip modal -->
+<div id="payslipModal" style="display:none; position:fixed; top:10%; left:10%; width:80%; bottom:40%; background:white; border:1px solid #ccc; padding:1em; box-shadow:0 0 10px rgba(0,0,0,0.2); z-index:1000; overflow:auto;">
+  <button id="closePayslipBtn" style="float:right; padding:0.5em;">✕</button>
+  <h3>Kanu - Payslip & Clinic Logs</h3>
+  <div style="font-size: 12px; display: flex; justify-content: center; flex-wrap: nowrap; gap: 1px;">
+    <label>Select Clinic:
+      <select id="payslipCategory" style="width: 150px;"></select>
+    </label>
+    <label>Period From:
+      <input type="date" id="payslipFromDate" style="width: auto;">
+    </label>
+    <label>Period To:
+      <input type="date" id="payslipToDate" style="width: auto;">
+    </label>
+    <button id="saveAsImageBtn" style="margin-top:1em; ">Save</button>
+  </div>
+  <p id="payslipSummary" style="display: flex; justify-content: space-around; align-tems: flex-start; gap: 2em; font-weight:bold; font-size:12px; margin-top:1em;"></p>
+  <table style="width:100%; font-size:12px; border-collapse: collapse; margin-top:10px;">
+    <thead>
+      <tr>
+        <th>Date</th><th>Day</th><th>Branch</th><th>Count</th><th>Rate</th><th>Total</th>
+      </tr>
+    </thead>
+    <tbody id="payslipTableBody"></tbody>
+  </table>
+</div>
+
+      
       <div class="filter-group">
         <label>Filter by Clinic</label>
         <div id="categoryFilters" class="radio-group">
@@ -249,6 +412,10 @@
     </table>
   </div>
 
+  <!-- Include html2canvas library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  
   <script>
     // Configuration
     const CONFIG = {
@@ -309,6 +476,297 @@
       DOM.categoryFilters.addEventListener('change', applyFilters);
     }
 
+    // Toggle modal
+document.getElementById('togglePayslipBtn').addEventListener('click', () => {
+  document.getElementById('payslipModal').style.display = 'block';
+  document.getElementById('payslipModal').classList.add('show');
+  populatePayslipCategories();
+  renderPayslipTable(); // initial
+});
+document.getElementById('closePayslipBtn').addEventListener('click', () => {
+  document.getElementById('payslipModal').style.display = 'none';
+  document.getElementById('payslipModal').classList.remove('show');
+});
+['payslipCategory', 'payslipFromDate', 'payslipToDate'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderPayslipTable);
+});
+
+// Fill dropdown
+function populatePayslipCategories() {
+  const select = document.getElementById('payslipCategory');
+  const unique = [...new Set(STATE.rawData.map(r => r['Category']).filter(Boolean))];
+  select.innerHTML = `<option value="ALL">ALL</option>` + unique.map(c => `<option>${c}</option>`).join('');
+}
+
+   
+// Render payslip
+function renderPayslipTable() {
+  const category = document.getElementById('payslipCategory').value;
+  const fromStr = document.getElementById('payslipFromDate').value;
+  const toStr = document.getElementById('payslipToDate').value;
+  const from = fromStr ? new Date(fromStr) : null;
+  const to = toStr ? new Date(toStr) : null;
+
+  const tableBody = document.getElementById('payslipTableBody');
+  tableBody.innerHTML = '';
+  let total = 0;
+
+  const data = STATE.rawData.filter(row => {
+    if (!row['Receipt Date']) return false;
+    const date = new Date(row['Receipt Date']);
+    if (isNaN(date)) return false;
+    const inCat = category === 'ALL' || row['Category'] === category;
+    const inRange = (!from || date >= from) && (!to || date <= to);
+    return inCat && inRange;
+  });
+
+  if (data.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; font-size:12px;">No records found</td></tr>`;
+    document.getElementById('payslipSummary').textContent = '';
+    return;
+  }
+
+  data.forEach(row => {
+    const isAquaHrly = row['Item Name'] === 'Aqua Hrly';
+
+    const qty = parseFloat(row['Quantity']) || 0;
+    const qtyFormatted = isAquaHrly ? qty.toFixed(2) : parseInt(qty);
+
+    const rate = parseFloat(row['price']) || 0;
+    const amount = parseFloat(row['Per patient total']) || (qty * rate);
+    total += amount;
+
+    const dateObj = new Date(row['Receipt Date']);
+    const day = dateObj.toLocaleDateString('en-GB', { weekday: 'short' });
+    const dateStr = dateObj.toLocaleDateString('en-GB');
+
+    const amountClass = amount < 0 ? ' class="negative"' : '';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${dateStr}</td>
+      <td>${day}</td>
+      <td>${row['Item Name']}</td>
+      <td>${qtyFormatted}</td>
+      <td>S$${Math.round(rate)}</td>
+      <td${amountClass}>S$${Math.round(amount)}</td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+ const totalClass = total < 0 ? ' class="negative"' : '';
+const totalRounded = Math.round(total);
+
+// Calculations
+const kanuCPF = totalRounded * 0.20;
+const clinicCPF = totalRounded * 0.17;
+const sinda = 7;
+const totalCPF = kanuCPF + clinicCPF;
+const kanuBank = totalRounded - kanuCPF;
+
+// Format function
+const fmt = val => `S$ ${Math.round(val).toLocaleString('en-SG')}`;
+
+// Column contents
+const earningsHTML = `
+  <div>
+    <strong>Earnings</strong><br>
+    Gross Pay: <span${totalClass}>${fmt(totalRounded)} est</span><br>
+    Nett Pay: ${fmt(kanuBank)} est
+  </div>
+`;
+
+const cpfHTML = `
+  <div>
+    <strong>CPF Deductions</strong><br>
+    Kanu CPF: ${fmt(kanuCPF)} est<br>
+    Clinic CPF: ${fmt(clinicCPF)} est<br>
+  </div>
+`;
+  
+const cpfHTML2 = `
+  <div>
+    <strong>Other & CPF Total</strong><br>
+    SINDA: ${fmt(sinda)} est<br>
+    Total CPF: ${fmt(totalCPF)} est
+  </div>
+`;
+
+// Display
+document.getElementById('payslipSummary').innerHTML = earningsHTML + cpfHTML + cpfHTML2;
+
+  
+ // Enable Save button if table has data
+      document.getElementById('saveAsImageBtn').disabled = false;
+    }
+
+    // Fetch and parse CSV
+    async function fetchAndParseCSV() {
+      try {
+        const response = await fetch(CONFIG.csvUrl);
+        if (!response.ok) throw new Error('Failed to fetch CSV');
+        const csvText = await response.text();
+
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            STATE.rawData = results.data;
+            populatePayslipCategories();
+            renderPayslipTable();
+          },
+          error: function(err) {
+            console.error('Error parsing CSV:', err);
+            alert('Failed to load table data.');
+          }
+        });
+      } catch (err) {
+        console.error('Error loading CSV:', err);
+        alert('Failed to load table data.');
+      }
+    }
+
+    // Call fetchAndParseCSV on page load
+    fetchAndParseCSV();
+
+    // Save as Image button logic (capture entire modal without save button)
+    document.getElementById('saveAsImageBtn').addEventListener('click', function() {
+      const modal = document.getElementById('payslipModal');
+
+      if (!modal) {
+        console.error('Modal element not found');
+        alert('Error: Modal not found. Please ensure the modal is loaded.');
+        return;
+      }
+
+      // Create a temporary clone
+      const clone = modal.cloneNode(true);
+      clone.className = modal.className;
+      clone.id = 'payslipModal';
+      clone.style.position = 'absolute';
+      clone.style.left = '-9999px';
+      clone.style.display = 'block';
+      clone.style.width = modal.offsetWidth + 'px';
+      clone.style.height = 'auto';
+      clone.style.maxHeight = 'none';
+      clone.style.overflow = 'visible';
+      clone.style.paddingBottom = "20px";
+      
+
+      // Remove save button from clone
+      const saveBtn = clone.querySelector('#saveAsImageBtn');
+      if (saveBtn) {
+        saveBtn.parentNode.removeChild(saveBtn);
+      }
+      
+      // Remove cross button from clone
+      const closeBtn = clone.querySelector('#closePayslipBtn');
+      if (closeBtn) {
+        closeBtn.parentNode.removeChild(closeBtn);
+      }
+      
+      // Remove table container max-height for clone to show all rows
+      const clonedTableContainer = clone.querySelector('.table-container');
+      if (clonedTableContainer) {
+        clonedTableContainer.style.maxHeight = 'none';
+        clonedTableContainer.style.overflow = 'visible';
+        clonedTableContainer.style.paddingBottom = '20px'; // Forced padding for image
+      }
+      
+      // Add disclaimer below table
+      const disclaimer = document.createElement('p');
+      disclaimer.className = 'disclaimer';
+      disclaimer.textContent = 'Disclaimer: Generated for time log comparison purposes only. Rate & Total E&OE.';
+      if (clonedTableContainer && clonedTableContainer.parentNode) {
+        clonedTableContainer.parentNode.appendChild(disclaimer); // Append to ensure placement
+      } else {
+        console.warn('Could not append disclaimer; appending to clone root');
+        clone.appendChild(disclaimer);
+      }
+
+      // Sync category dropdown
+      const originalSelect = document.getElementById('payslipCategory');
+      const selectedValue = originalSelect ? originalSelect.value : 'ALL';
+      const clonedSelect = clone.querySelector('#payslipCategory');
+      if (clonedSelect) {
+        Array.from(clonedSelect.options).forEach(option => {
+          option.selected = option.value === selectedValue;
+        });
+        clonedSelect.value = selectedValue;
+      }
+
+      // Apply styles to clone
+      clone.style.fontFamily = 'Arial, sans-serif';
+      clone.style.padding = '1em';
+      clone.style.background = 'white';
+      clone.style.border = '1px solid #ccc';
+      clone.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
+      const clonedH3 = clone.querySelector('h3');
+      if (clonedH3) {
+        clonedH3.style.fontSize = '18px';
+        clonedH3.style.fontWeight = 'bold';
+        clonedH3.style.margin = '0 0 10px 0';
+        clonedH3.style.color = '#000';
+      }
+      const clonedFilterContainer = clone.querySelector('.filter-container');
+      if (clonedFilterContainer) {
+        clonedFilterContainer.style.fontSize = '12px';
+        clonedFilterContainer.style.display = 'flex';
+        clonedFilterContainer.style.flexWrap = 'wrap';
+        clonedFilterContainer.style.gap = '10px';
+      }
+      const clonedSummary = clone.querySelector('#payslipSummary');
+      if (clonedSummary) {
+        clonedSummary.style.fontWeight = 'bold';
+        clonedSummary.style.fontSize = '12px';
+        clonedSummary.style.marginTop = '1em';
+        clonedSummary.style.color = '#000';
+      }
+
+      document.body.appendChild(clone);
+
+      // Force reflow
+      clone.offsetHeight;
+
+      // Log dimensions and select state for debugging
+      console.log('Original modal size:', modal.scrollWidth, modal.scrollHeight);
+      console.log('Clone size:', clone.scrollWidth, clone.scrollHeight);
+      console.log('Selected category:', selectedValue);
+      console.log('Cloned select value:', clonedSelect ? clonedSelect.value : 'N/A');
+
+      setTimeout(() => {
+        html2canvas(clone, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          logging: true,
+          scrollX: 0,
+          scrollY: 0,
+          width: clone.scrollWidth,
+          height: clone.scrollHeight
+        }).then(canvas => {
+          // Remove clone
+          document.body.removeChild(clone);
+          console.log('Canvas size:', canvas.width, canvas.height);
+
+          // Trigger download
+          const image = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = image;
+          link.download = 'KanuTimeLog.png';
+          link.click();
+        }).catch(err => {
+          // Remove clone on error
+          document.body.removeChild(clone);
+          console.error('Error generating image:', err);
+          alert('Failed to save the modal as an image. Please try again.');
+        });
+      }, 300);
+    });
+    
+// end payslip
+    
+    
     async function fetchData() {
       try {
         const response = await fetch(CONFIG.csvUrl);
