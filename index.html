@@ -109,6 +109,12 @@
     margin-bottom: 30px;
   }
 
+.chart-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+  
   .chart-container {
     flex: 1;
     min-width: 300px;
@@ -374,7 +380,7 @@
 
     <div class="divider"></div>
   
-    
+    <div class="charts-row">
     <div id="chart1" class="charts-container">
       <div class="chart-container">
         <canvas id="patientCountChart"></canvas>
@@ -382,15 +388,18 @@
       <div id="chart2" class="chart-container">
         <canvas id="earningsChart"></canvas>
       </div>
-   
-<div id="chart3" class="chart-container">
+    </div>
+      
+      <div class="charts-row">
+<div id="chart3" class="charts-container">
+<div class="chart-container">
     <canvas id="workloadByDayChart"></canvas>
 </div>
-
 <div id="chart4" class="chart-container">
     <canvas id="earningsByDayChart"></canvas>
 </div>
     </div>
+
     
     <div class="divider"></div>
 
